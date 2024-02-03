@@ -1,0 +1,82 @@
+#import all the necessary libraries
+from playwright.sync_api import sync_playwright
+import time
+import smtplib 
+from email.mime.multipart import MIMEMultipart 
+from email.mime.text import MIMEText 
+
+
+def send_email(subject, body, to, from_email='20230003255@students.cud.ac.ae', password='Nepal@1234'): #Change the email and password
+
+    msg = MIMEMultipart() 
+    msg['From'] = from_email 
+    msg['To'] = to 
+    msg['Subject'] = subject 
+    msg.attach(MIMEText(body, 'plain')) 
+
+    server = smtplib.SMTP('smtp.office365.com', 587) 
+    server.starttls() 
+    server.login(from_email, password) 
+    text = msg.as_string() 
+    server.sendmail(from_email, to, text) 
+    server.quit() 
+
+
+def run(playwright):
+    browser = playwright.chromium.launch(headless=False)
+    context = browser.new_context()
+
+    # Open new page 
+    page = context.new_page()
+
+    # Ask user for keywords to search for in the amazon website and range of items
+    keywords = input("Enter your keyword: ")
+    while not keywords.isalpha(): #Ensure the keyword is not empty
+        print("Invalid Keyword!")
+        keywords = input("Enter your keyword: ")
+
+    item_range = input("Enter the number of products to choose from(1-10): ")
+    while item_range not in ['1','2','3','4','5','6','7','8','9','10']: #Ensure that the number inserted is a valid integer between 0-10.
+        print("Invalid input!")
+        item_range = input("Enter the number of products to choose from(1-10): ")
+
+    #Navigate to Amazon website with the user's keywords
+    page.goto(f"https://amazon.ae/s?k={keywords}")
+    time.sleep(0.5)
+
+    #create an empty list to store the product title and price
+    prod_info = []
+
+    #Using the user's item range open the websites of the top n products on different tab
+    for item in range(int(item_range)):
+        results2 = page.query_selector_all(".s-main-slot h2 .a-text-normal")
+        prod = results2[2*item]
+        link = prod.get_attribute("href")
+        new_page = context.new_page()
+        new_page.goto(f"https://amazon.ae{link}")
+
+        #Extract title and price of the product from each product site
+        title = new_page.query_selector("#productTitle").inner_text()
+        price = new_page.query_selector(".a-offscreen").inner_text()
+
+        #Append the title and price to the empty list (prod_info)
+        prod_info.append(f"{item+1}. Product Title: {title}  \nProduct Price: {price}")
+
+    #Close the browser
+    context.close()
+    browser.close() 
+    time.sleep(0.5)
+
+    #Write the required message for the subject and the body of the email
+    subject_line = f"Product Information of the top {item_range} {keywords} from Amazon"
+    email_body = "The details of the top products are as follows: \n" + '\n \n'.join(prod_info) #Converting the list into string
+    #User input for the email they want the information to be sent to
+    email_address = input("Enter your email address: ")
+    while '.' not in email_address or '@' not in email_address: #Ensure the email address is valid
+        print("Invalid email address!")
+        email_address = input("Enter your email address: ")
+    #call the function to send the email message
+    send_email(subject_line, email_body, email_address) 
+
+with sync_playwright() as p: #Finally call the main function and run the entire program!
+    run(p)
