@@ -3,7 +3,7 @@ from playwright.sync_api import sync_playwright
 import time
 import smtplib 
 from email.mime.multipart import MIMEMultipart 
-from email.mime.text import MIMEText 
+from email.mime.text import MIMEText
 
 
 def send_email(subject, body, to, from_email='20230003255@students.cud.ac.ae', password='Nepal@1234'): #Change the email and password
